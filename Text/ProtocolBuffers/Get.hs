@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP,MagicHash,ScopedTypeVariables,FlexibleInstances,RankNTypes,TypeSynonymInstances,MultiParamTypeClasses,BangPatterns #-}
+{-# LANGUAGE CPP,MagicHash,ScopedTypeVariables,FlexibleInstances,RankNTypes,TypeSynonymInstances,MultiParamTypeClasses,BangPatterns,AlternativeLayoutRule #-}
+
 -- | By Chris Kuklewicz, drawing heavily from binary and binary-strict,
 -- but all the bugs are my own.
 --
