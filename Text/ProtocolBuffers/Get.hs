@@ -671,34 +671,7 @@ class MonadSuspend m where
 -- by 'addFuture' to ('S' user) and to the packaging of the resumption
 -- function in 'IResult'('IPartial').
 instance MonadSuspend Get where
-    suspend = Get (
--- XXX I moved checkBool, addFuture, and rememberFalse inside the Get ( ) from
--- their previous location in the where clause below (with appendBS).
---
--- XXX This is because ghc-7.0.2 had error:
-{-
-Text/ProtocolBuffers/Get.hs:304:15:
-    Couldn't match type `b1' with `b'
-      because type variable `b' would escape its scope
-    This (rigid, skolem) type variable is bound by
-      a type expected by the context:
-        Success b Bool -> S -> FrameStack b -> Result b
-    The following variables have types that mention b1
-      addFuture :: L.ByteString -> FrameStack b1 -> FrameStack b1
-        (bound at Text/ProtocolBuffers/Get.hs:315:12)
--}
--- I am worried this may change the allocation behavior of the program. But suspend rarely gets called.
-      let checkBool (ErrorFrame _ b) = b
-          checkBool (HandlerFrame _ _ _ pc) = checkBool pc
-          -- addFuture puts the new data in 'future' where throwError's collect can find and use it
-          addFuture bs (HandlerFrame catcher s future pc) =
-                        HandlerFrame catcher s (future |> bs) (addFuture bs pc)
-          addFuture _bs x@(ErrorFrame {}) = x
-          -- Once suspend is given Nothing, it remembers this and always returns False
-          rememberFalse (ErrorFrame ec _) = ErrorFrame ec False
-          rememberFalse (HandlerFrame catcher s future pc) =
-                         HandlerFrame catcher s future (rememberFalse pc)
-      in \ sc sIn pcIn ->
+    suspend = Get $ \ sc sIn pcIn ->
       if checkBool pcIn -- Has Nothing ever been given to a partial continuation?
         then let f Nothing = let pcOut = rememberFalse pcIn
                              in sc False sIn pcOut
@@ -707,8 +680,20 @@ Text/ProtocolBuffers/Get.hs:304:15:
                                 in sc True sOut pcOut
              in Partial f
         else sc False sIn pcIn  -- once Nothing has been given suspend is a no-op
-                  )
      where appendBS (S ss bs n) bs' = S ss (mappend bs bs') n
+           checkBool :: FrameStack a -> Bool
+           checkBool (ErrorFrame _ b) = b
+           checkBool (HandlerFrame _ _ _ pc) = checkBool pc
+           -- addFuture puts the new data in 'future' where throwError's collect can find and use it
+           addFuture :: L.ByteString -> FrameStack a -> FrameStack a
+           addFuture bs (HandlerFrame catcher s future pc) =
+                         HandlerFrame catcher s (future |> bs) (addFuture bs pc)
+           addFuture _bs x@(ErrorFrame {}) = x
+           -- Once suspend is given Nothing, it remembers this and always returns False
+           rememberFalse :: FrameStack a -> FrameStack a
+           rememberFalse (ErrorFrame ec _) = ErrorFrame ec False
+           rememberFalse (HandlerFrame catcher s future pc) =
+                          HandlerFrame catcher s future (rememberFalse pc)
 
 -- A unique sort of command...
 
