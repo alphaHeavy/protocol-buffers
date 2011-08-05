@@ -448,11 +448,8 @@ wireGetErr ft = answer where
 -- "Text.ProtocolBuffers.WireMessage" and exported to use user by
 -- "Text.ProtocolBuffers".  These are less likely to change.
 class Wire b where
-  {-# INLINE wireSize #-}
   wireSize :: FieldType -> b -> WireSize
-  {-# INLINE wirePut #-}
   wirePut :: FieldType -> b -> Put
-  {-# INLINE wireGet #-}
   wireGet :: FieldType -> Get b
   {-# INLINE wireGetPacked #-}
   wireGetPacked :: FieldType -> Get (Seq b)
