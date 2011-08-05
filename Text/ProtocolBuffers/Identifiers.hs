@@ -17,8 +17,7 @@
 -- leading '_' is replaced with a leading "U'_" to make a valid
 -- identifier.
 module Text.ProtocolBuffers.Identifiers
-  ( unull,toString,fromString
-  , IName(..),DIName(..),FIName(..)
+  ( IName(..),DIName(..),FIName(..)
   , MName(..),FMName(..),PMName(..)
   , FName(..),FFName(..),PFName(..)
   , Dotted(..),Mangle(..)
@@ -27,8 +26,6 @@ module Text.ProtocolBuffers.Identifiers
   , promoteDI,promoteFI,promoteFM,promoteFF,dotFM,dotFF,fqAppend
   ) where
 
-import qualified Data.ByteString.Lazy.Char8 as LC
-import qualified Data.ByteString.Lazy.UTF8 as U
 import Data.Char
 import Data.List
 import Data.Monoid
@@ -37,17 +34,7 @@ import Data.Typeable(Typeable)
 import Data.Set(Set)
 import qualified Data.Set as S
 import Text.ProtocolBuffers.Basic
-
--- basic utilities to export
-
-unull :: Utf8 -> Bool
-unull = LC.null . utf8
-
-toString :: Utf8 -> String
-toString = U.toString . utf8
-
-fromString :: String -> Utf8
-fromString = Utf8 . U.fromString
+import qualified Data.Text.Lazy as T
 
 -- | Contains one identifier name
 newtype IName a = IName {iName::a} deriving (Data,Typeable,Eq,Ord)
@@ -113,10 +100,10 @@ class (Monoid a) => Dotted a where
 -- Dotted.
 
 joinPM :: Dotted a => PMName a -> FMName a
-joinPM (PMName xs (MName x)) = FMName (foldr dot x . map mName $ xs)
+joinPM (PMName xs (MName x)) = FMName (foldr (dot . mName) x xs)
 
 joinPF :: Dotted a => PFName a -> FFName a
-joinPF (PFName xs (FName x)) = FFName (foldr dot x . map mName $ xs)
+joinPF (PFName xs (FName x)) = FFName (foldr (dot . mName) x xs)
 
 -- | 'difi' examines the 'DIName' and prepend a '.' if absent, promoting
 -- it to a 'FIName'.
@@ -178,18 +165,18 @@ checkDIString xs | ('.':ys) <- xs = fmap ((,) True) $ parts id (span ('.'/=) ys)
 -- Right (False,_) means the input is a DIName (without leading '.')
 --
 -- This creates useful error messages for the user.
-checkDIUtf8 :: Utf8 -> Either String (Bool,[IName Utf8])
-checkDIUtf8 s@(Utf8 xs) =
-  case U.uncons xs of
+checkDIUtf8 :: T.Text -> Either String (Bool,[IName T.Text])
+checkDIUtf8 xs =
+  case T.uncons xs of
     Nothing -> Left $ "Invalid empty identifier: "++show ""
-    Just ('.',ys) | LC.null ys -> Left $ "Invalid identifier of just a period: "++show "."
-                  | otherwise -> fmap ((,) True) $ parts id (U.span ('.'/=) ys)
-    Just _ -> fmap ((,) False) $ parts id (U.span ('.'/=) xs)
- where parts f (a,b) = case (LC.null a,LC.null b) of
-                         (True,True) -> Left $ "Invalid identifier because it ends with a period: "++show (toString s)
-                         (True,_)    -> Left $ "Invalid identifier because is contains two periods in a row: "++show (toString s)
-                         (_,True)    -> Right (f [IName (Utf8 a)])
-                         _           -> parts (f . (IName (Utf8 a):)) (U.span ('.'/=) (U.drop 1 b))
+    Just ('.',ys) | T.null ys -> Left $ "Invalid identifier of just a period: "++show "."
+                  | otherwise -> fmap ((,) True) $ parts id (T.span ('.'/=) ys)
+    Just _ -> fmap ((,) False) $ parts id (T.span ('.'/=) xs)
+ where parts f (a,b) = case (T.null a,T.null b) of
+                         (True,True) -> Left $ "Invalid identifier because it ends with a period: "++show xs
+                         (True,_)    -> Left $ "Invalid identifier because is contains two periods in a row: "++show xs
+                         (_,True)    -> Right (f [IName a])
+                         _           -> parts (f . (IName a:)) (T.span ('.'/=) (T.drop 1 b))
  
 -- | The 'mangle' transformation has instances for several combiantions
 -- of input and output.  These allow one to construct the Haskell types
@@ -202,8 +189,8 @@ class Mangle a b where mangle :: a -> b
 instance Mangle (IName String) (MName String) where
   mangle (IName s) = MName (fixUp s)
 
-instance Mangle (IName Utf8) (MName String) where
-  mangle (IName s) = MName (fixUp . toString $ s)
+instance Mangle (IName T.Text) (MName String) where
+  mangle (IName s) = MName (fixUp . T.unpack $ s)
 
 instance Mangle (FName String) (MName String) where
   mangle (FName s) = MName (fixUp s)
@@ -211,40 +198,35 @@ instance Mangle (FName String) (MName String) where
 instance Mangle (IName String) (FName String) where
   mangle (IName s) = FName (fixLow s)
 
-instance Mangle (IName Utf8) (FName String) where
-  mangle (IName s) = FName (fixLow . toString $ s)
+instance Mangle (IName T.Text) (FName String) where
+  mangle (IName s) = FName (fixLow . T.unpack $ s)
 
 instance Mangle (MName String) (FName String) where
   mangle (MName s) = FName (fixLow s)
 
-instance Mangle (DIName Utf8) (PMName String) where
+instance Mangle (DIName T.Text) (PMName String) where
   mangle s = let ms = splitDI s in PMName (map mangle $ init ms) (mangle $ last ms)
 
-instance Mangle (FIName Utf8) (PMName String) where
+instance Mangle (FIName T.Text) (PMName String) where
   mangle s = let ms = splitFI s in PMName (map mangle $ init ms) (mangle $ last ms)
 
-instance Mangle (DIName Utf8) (PFName String) where
+instance Mangle (DIName T.Text) (PFName String) where
   mangle s = let ms = splitDI s in PFName (map mangle $ init ms) (mangle $ last ms)
 
-instance Mangle (FIName Utf8) (PFName String) where
+instance Mangle (FIName T.Text) (PFName String) where
   mangle s = let ms =  splitFI s in PFName (map mangle $ init ms) (mangle $ last ms)
 
 -- implementation details follow
 
-dotUtf8 :: Utf8 -> Utf8 -> Utf8
-dotUtf8 (Utf8 a) (Utf8 b) = Utf8 (LC.append a (LC.cons '.' b))
+dotUtf8 :: T.Text -> T.Text -> T.Text
+dotUtf8 a b = T.append a (T.cons '.' b)
 
 dotString :: String -> String -> String
 dotString a b = a ++ ('.':b)
 
 -- | Return list of nonempty Utf8, with all '.' removed
-splitUtf8 :: Utf8 -> [Utf8]
-splitUtf8 = unfoldr s . utf8 where
-  s :: ByteString -> Maybe (Utf8,ByteString)
-  s y = case LC.uncons y of
-          Nothing -> Nothing
-          Just ('.',xs) -> s xs -- delete all '.' in the input
-          _ -> Just (let (a,b) = U.span ('.'/=) y in (Utf8 a,b))
+splitUtf8 :: T.Text -> [T.Text]
+splitUtf8 = T.split (=='.')
 
 -- | Return list of nonempty String, with all '.' removed
 splitString :: String -> [String]
@@ -253,11 +235,11 @@ splitString = unfoldr s where
   s ('.':xs) = s xs -- delete all '.' in the input
   s xs = Just (span ('.'/=) xs)
 
-validIUtf8 :: Utf8 -> Maybe (IName Utf8)
-validIUtf8 xs | unull xs = Nothing
-validIUtf8 xs@(Utf8 bs) = if LC.all (`S.member` validISet) bs
-                            then Just (IName xs)
-                            else Nothing
+validIUtf8 :: T.Text -> Maybe (IName T.Text)
+validIUtf8 xs | T.null xs = Nothing
+validIUtf8 xs = if T.all (`S.member` validISet) xs
+                  then Just (IName xs)
+                  else Nothing
 
 validIString :: String -> Maybe (IName String)
 validIString [] = Nothing
@@ -265,11 +247,11 @@ validIString xs = if all (`S.member` validISet) xs
                     then Just (IName xs)
                     else Nothing
 
-validDIUtf8 :: Utf8 -> Maybe (DIName Utf8)
-validDIUtf8 xs | unull xs = Nothing
-validDIUtf8 xs@(Utf8 bs) =
-  if LC.all (`S.member` validDISet) bs && LC.any ('.'/=) bs && LC.last bs /= '.'
-     && (all (\(x,y) -> '.'/=x || '.'/=y) . (\x -> zip (init x) (tail x)) . toString $ xs)
+validDIUtf8 :: T.Text -> Maybe (DIName T.Text)
+validDIUtf8 xs | T.null xs = Nothing
+validDIUtf8 xs =
+  if T.all (`S.member` validDISet) xs && T.any ('.'/=) xs && T.last xs /= '.'
+     && (all (\(x,y) -> '.'/=x || '.'/=y) . (\x -> zip (init x) (tail x)) . T.unpack $ xs)
     then Just (DIName xs)
     else Nothing
 
@@ -287,12 +269,12 @@ validISet = S.fromDistinctAscList "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefgh
 validDISet :: Set Char
 validDISet = S.fromDistinctAscList ".0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
 
-instance Dotted Utf8 where
-  uncons x = case U.uncons (utf8 x) of
+instance Dotted Text where
+  uncons x = case T.uncons x of
                Nothing -> Nothing
-               Just (c,b) -> Just (c,Utf8 b)
-  cons b (Utf8 bs) | fromEnum b < 128 = Utf8 (LC.cons b bs)
-                   | otherwise = Utf8 ((U.fromString [b]) `mappend` bs)
+               Just (c,b) -> Just (c,b)
+  cons b t | fromEnum b < 128 = T.cons b t
+           | otherwise = T.pack [b] `mappend` t
   dot = dotUtf8
   split = splitUtf8
   validI = validIUtf8

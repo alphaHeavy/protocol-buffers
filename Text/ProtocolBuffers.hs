@@ -47,7 +47,7 @@ module Text.ProtocolBuffers(
   ) where
 
 import Text.ProtocolBuffers.Basic
-  ( Seq,isValidUTF8,toUtf8,utf8,Utf8(Utf8),Int32,Int64,Word32,Word64
+  ( Seq,Text,Int32,Int64,Word32,Word64
   , WireTag,FieldId,WireType,FieldType,EnumCode,WireSize
   , Mergeable(mergeAppend,mergeConcat),Default(defaultValue))
 import Text.ProtocolBuffers.Extensions

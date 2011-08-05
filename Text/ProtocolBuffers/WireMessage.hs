@@ -49,6 +49,8 @@ import Data.Maybe(fromMaybe)
 import Data.Sequence ((|>))
 import qualified Data.Sequence as Seq(length,empty)
 import qualified Data.Set as Set(delete,null)
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Encoding as T
 import Data.Typeable (Typeable(..))
 -- GHC internals for getting at Double and Float representation as Word64 and Word32
 -- This has been superceded by the ST array trick (ugly, but promised to work)
@@ -557,11 +559,11 @@ instance Wire Bool where
   wireGetPacked 8 = genericPacked 8
   wireGetPacked ft = wireGetErr ft
 
-instance Wire Utf8 where
+instance Wire T.Text where
 -- items of TYPE_STRING is already in a UTF8 encoded Data.ByteString.Lazy
-  wireSize {- TYPE_STRING   -} 9      x = prependMessageSize $ BS.length (utf8 x)
+  wireSize {- TYPE_STRING   -} 9      x = prependMessageSize $ BS.length (T.encodeUtf8 x)
   wireSize ft x = wireSizeErr ft x
-  wirePut  {- TYPE_STRING   -} 9      x = putVarUInt (BS.length (utf8 x)) >> putLazyByteString (utf8 x)
+  wirePut  {- TYPE_STRING   -} 9      x = putVarUInt (BS.length (T.encodeUtf8 x)) >> putLazyByteString (T.encodeUtf8 x)
   wirePut ft x = wirePutErr ft x
   wireGet  {- TYPE_STRING   -} 9        = getVarInt >>= getLazyByteString >>= verifyUtf8
   wireGet ft = wireGetErr ft
@@ -587,9 +589,9 @@ instance Wire Int where
   wireGetPacked ft = wireGetErr ft
 
 {-# INLINE verifyUtf8 #-}
-verifyUtf8 :: ByteString -> Get Utf8
+verifyUtf8 :: ByteString -> Get T.Text
 verifyUtf8 bs = case isValidUTF8 bs of
-                  Nothing -> return (Utf8 bs)
+                  Nothing -> return (T.decodeUtf8 bs)
                   Just i -> throwError $ "Text.ProtocolBuffers.WireMessage.verifyUtf8: ByteString is not valid utf8 at position "++show i
 
 {-# INLINE wireGetEnum #-}

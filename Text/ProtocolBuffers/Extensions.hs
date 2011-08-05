@@ -315,7 +315,7 @@ class (Mergeable a,Default a,Wire a,Show a,Typeable a,Eq a,Ord a) => GPB a
 
 instance GPB Bool
 instance GPB ByteString
-instance GPB Utf8
+instance GPB Text
 instance GPB Double
 instance GPB Float
 instance GPB Int32
@@ -847,7 +847,7 @@ instance (Default v) => MessageAPI msg (Key Seq msg v) (Seq v) where
                           in M.member fid x
 
 instance MessageAPI msg (msg -> ByteString) ByteString where getVal m f = f m
-instance MessageAPI msg (msg -> Utf8) Utf8 where getVal m f = f m
+instance MessageAPI msg (msg -> Text) Text where getVal m f = f m
 instance MessageAPI msg (msg -> Double) Double where getVal m f = f m
 instance MessageAPI msg (msg -> Float) Float where getVal m f = f m
 instance MessageAPI msg (msg -> Int32) Int32 where getVal m f = f m

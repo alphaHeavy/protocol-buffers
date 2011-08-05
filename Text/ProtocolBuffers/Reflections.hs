@@ -28,11 +28,13 @@ import qualified Data.Set as Set(fromDistinctAscList)
 import Data.Generics(Data)
 import Data.Typeable(Typeable)
 import Data.Map(Map)
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Encoding as T
 
 -- | 'makePNF' is used by the generated code to create a ProtoName with less newtype noise.
 makePNF :: ByteString -> [String] -> [String] -> String -> ProtoName
 makePNF a bs cs d =
-  ProtoName (FIName (Utf8 a))
+  ProtoName (FIName (T.decodeUtf8 a))
             (map MName bs)
             (map MName cs)
             (MName d)
@@ -44,14 +46,14 @@ makePNF a bs cs d =
 --
 -- The name components are likely to have been mangled to ensure the
 -- 'baseName' started with an uppercase letter, in @ ['A'..'Z'] @.
-data ProtoName = ProtoName { protobufName :: FIName Utf8     -- ^ fully qualified name using "package" prefix (no mangling)
+data ProtoName = ProtoName { protobufName :: FIName T.Text   -- ^ fully qualified name using "package" prefix (no mangling)
                            , haskellPrefix :: [MName String] -- ^ Haskell specific prefix to module hierarchy (e.g. Text.Foo)
                            , parentModule :: [MName String]  -- ^ .proto specified namespace (like Com.Google.Bar)
                            , baseName :: MName String
                            }
   deriving (Show,Read,Eq,Ord,Data,Typeable)
 
-data ProtoFName = ProtoFName { protobufName' :: FIName Utf8     -- ^ fully qualified name using "package" prefix (no mangling)
+data ProtoFName = ProtoFName { protobufName' :: FIName T.Text   -- ^ fully qualified name using "package" prefix (no mangling)
                              , haskellPrefix' :: [MName String] -- ^ Haskell specific prefix to module hierarchy (e.g. Text.Foo)
                              , parentModule' :: [MName String]  -- ^ .proto specified namespace (like Com.Google.Bar)
                              , baseName' :: FName String

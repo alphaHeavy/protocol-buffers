@@ -1,5 +1,5 @@
 name:           protocol-buffers
-version:        2.0.5
+version:        3.0.0
 cabal-version:  >= 1.10
 build-type:     Simple
 license:        BSD3
@@ -42,7 +42,7 @@ Library
                  directory,
                  filepath,
                  mtl,
-                 utf8-string
+                 text
 
   if flag(small_base)
     build-depends: base == 4.*, syb

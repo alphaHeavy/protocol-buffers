@@ -5,12 +5,12 @@
 -- 'Default' classes. The 'Wire' class is not defined here to avoid orphans.
 module Text.ProtocolBuffers.Basic
   ( -- * Basic types for protocol buffer fields in Haskell
-    Double,Float,Bool,Maybe,Seq,Utf8(Utf8),ByteString,Int32,Int64,Word32,Word64
+    Double,Float,Bool,Maybe,Seq,T.Text,ByteString,Int32,Int64,Word32,Word64
     -- * Haskell types that act in the place of DescritorProto values
   , WireTag(..),FieldId(..),WireType(..),FieldType(..),EnumCode(..),WireSize
     -- * Some of the type classes implemented messages and fields
   , Mergeable(..),Default(..) -- ,Wire(..)
-  , isValidUTF8, toUtf8, utf8, uToString, uFromString
+  , isValidUTF8, toUtf8, uToString, uFromString
   ) where
 
 import Data.Bits(Bits)
@@ -25,33 +25,10 @@ import Data.Typeable(Typeable(..))
 import Data.Word(Word8,Word32,Word64)
 
 import qualified Data.ByteString.Lazy as L(unpack)
-import Data.ByteString.Lazy.UTF8 as U (toString,fromString)
+import qualified Data.Text.Lazy as T
+import qualified Data.Text.Lazy.Encoding as T
 
 -- Num instances are derived below for the purpose of getting fromInteger for case matching
-
--- | 'Utf8' is used to mark 'ByteString' values that (should) contain
--- valud utf8 encoded strings.  This type is used to represent
--- 'TYPE_STRING' values.
-newtype Utf8 = Utf8 ByteString deriving (Data,Typeable,Eq,Ord)
-
-utf8 :: Utf8 -> ByteString
-utf8 (Utf8 bs) = bs
-
-instance Read Utf8 where
-  readsPrec d xs = let r :: Int -> ReadS String
-                       r = readsPrec
-                       f :: (String,String) -> (Utf8,String)
-                       f (a,b) = (Utf8 (U.fromString a),b)
-                   in map f . r d $ xs
-
-instance Show Utf8 where
-  showsPrec d (Utf8 bs) = let s :: Int -> String -> ShowS
-                              s = showsPrec
-                          in s d (U.toString bs)
-
-instance Monoid Utf8 where
-  mempty = Utf8 mempty
-  mappend (Utf8 x) (Utf8 y) = Utf8 (mappend x y)
 
 -- | 'WireTag' is the 32 bit value with the upper 29 bits being the
 -- 'FieldId' and the lower 3 bits being the 'WireType'
@@ -210,14 +187,14 @@ isValidUTF8 bs = go 0 (L.unpack bs) 0 where
                 | otherwise = Just n
   high [] n = Just n
 
-toUtf8 :: ByteString -> Either Int Utf8
-toUtf8 bs = maybe (Right (Utf8 bs)) Left (isValidUTF8 bs)
+toUtf8 :: ByteString -> Either Int T.Text
+toUtf8 bs = maybe (Right (T.decodeUtf8 bs)) Left (isValidUTF8 bs)
 
-uToString :: Utf8 -> String
-uToString (Utf8 bs) = U.toString bs
+uToString :: T.Text -> String
+uToString = T.unpack
 
-uFromString :: String -> Utf8
-uFromString s = Utf8 (U.fromString s)
+uFromString :: String -> T.Text
+uFromString = T.pack 
 
 
 -- Base types are not very mergeable, but their Maybe and Seq versions are:
@@ -237,7 +214,7 @@ instance Mergeable (Seq a) where
 
 -- These all have errors as mergeEmpty and use the second paramater for mergeAppend
 instance Mergeable Bool
-instance Mergeable Utf8
+instance Mergeable T.Text
 instance Mergeable ByteString
 instance Mergeable Double
 instance Mergeable Float
@@ -256,5 +233,5 @@ instance Default Bool where defaultValue = False
 instance Default (Maybe a) where defaultValue = Nothing
 instance Default (Seq a) where defaultValue = mempty
 instance Default ByteString where defaultValue = mempty
-instance Default Utf8 where defaultValue = mempty
+instance Default T.Text where defaultValue = mempty
 
