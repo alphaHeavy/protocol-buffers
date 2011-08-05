@@ -85,7 +85,7 @@ import Data.Monoid(Monoid(mempty,mappend))           -- Writer has a Monoid cont
 import Data.Sequence(Seq,null,(|>))                  -- used for future queue in handler state
 import Data.Word(Word,Word8,Word16,Word32,Word64)
 import Foreign.ForeignPtr(withForeignPtr)
-import Foreign.Ptr(Ptr,castPtr,plusPtr,minusPtr)
+import Foreign.Ptr(Ptr,castPtr,plusPtr,minusPtr,nullPtr)
 import Foreign.Storable(Storable(peek,sizeOf))
 import System.IO.Unsafe(unsafePerformIO)
 #if defined(__GLASGOW_HASKELL__) && !defined(__HADDOCK__)
@@ -185,6 +185,8 @@ decode7unrolled = Get $ \ sc sIn@(S ss@(S.PS fp off len) bs n) pc ->
                 {-# INLINE ok #-}
                 {-# INLINE more #-}
                 {-# INLINE err #-}
+
+            if ptr0 == nullPtr then more else do
 
             let start = ptr0 `plusPtr` off :: Ptr Word8
             b'1 <- peek start
