@@ -13,7 +13,7 @@ package-url:    http://code.haskell.org/protocol-buffers/
 synopsis:       Parse Google Protocol Buffer specifications
 description:    Parse language defined at "http://code.google.com/apis/protocolbuffers/docs/proto.html" and general haskell code to implement messages.
 category:       Text
-Tested-With:    GHC == 7.0.3
+Tested-With:    GHC == 7.4.1
 extra-source-files: README,
                     google-proto-files/google/protobuf/descriptor.proto,
                     google-proto-files/google/protobuf/plugin.proto
