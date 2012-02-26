@@ -524,10 +524,7 @@ makeNameMap hPrefix fdpIn = go (makeOne fdpIn) where
     let packageName = case D.FileDescriptorProto.package fdp of
                         Nothing -> FIName $ fromString ""
                         Just p  -> difi $ DIName p
-    rawParent <- getJust "makeNameMap.makeOne: " . msum $
-        [ D.FileOptions.java_outer_classname =<< (D.FileDescriptorProto.options fdp)
-        , D.FileOptions.java_package =<< (D.FileDescriptorProto.options fdp)
-        , Just (getPackage fdp)]
+        rawParent = getPackage fdp
     diParent <- getJust ("makeNameMap.makeOne: invalid character in: "++show rawParent)
                   (validDI rawParent)
     let hParent = map (mangle :: IName Utf8 -> MName String) . splitDI $ diParent
