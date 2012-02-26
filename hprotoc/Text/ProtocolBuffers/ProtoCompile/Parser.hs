@@ -590,7 +590,7 @@ cEncode = concatMap one where
         | otherwise = '\\':(showOct x "")
   sl c = ['\\',c]
 
-showRF :: (RealFloat a) => a -> String
+showRF :: (Show a, RealFloat a) => a -> String
 showRF x | isNaN x = "nan"
          | isInfinite x = if 0 < x then "inf" else "-inf"
          | otherwise = show x
